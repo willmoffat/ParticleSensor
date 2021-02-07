@@ -23,7 +23,7 @@ class EdiGreenSensor:
         self.username = username
         self.password = password
         self._log_request = False
-        self._log_result = False
+        self._log_response = False
 
     def send_cmd(self, cmd):
         """Send command to Edimax and return its response."""
@@ -32,6 +32,7 @@ class EdiGreenSensor:
             "customer.name": "EDIMAX",
             "mac": self.mac,
             "cmd": cmd,
+            "uid": None,  # Ignored?
         }
         if self._log_request:
             print('debug: url={} data={}'.format(url, data))
@@ -41,10 +42,9 @@ class EdiGreenSensor:
         msg = _rotate_json(response.content)
         # print('Debug: msg={}'.format(msg))
         data = json.loads(msg)
-        cmd_result = data['cmd'][1]
-        if self._log_result:
-            print('debug: cmd_respone=', json.dumps(cmd_result, indent=2))
-        return cmd_result
+        if self._log_response:
+            print('debug: cmd_respone=', json.dumps(data, indent=2))
+        return data['cmd'][1]
 
     def set_led(self, led_enable):
         """Set the led on or off."""
@@ -173,7 +173,7 @@ def test():
 
     print(sensor.get_readings())
 
-    sensor._log_result = True
+    sensor._log_response = True
     sensor._log_request = True
     sensor.get_all()
     sensor.set_led(1)
