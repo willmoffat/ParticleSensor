@@ -1,5 +1,6 @@
 """Python class for interfacing with an EdiGreen Home Sensor."""
 
+from socket import *
 import json
 import os
 import requests
@@ -9,21 +10,56 @@ from requests.auth import HTTPDigestAuth
 class EdiGreenSensor:
     """Represents an Edimax EdiGreen Home Sensor."""
 
-    def __init__(self, addr, mac, username="admin", password="1234"):
+    def __init__(self, addr, mac, name="EdiMax", username="admin", password="1234"):
         if not addr:
             raise ValueError("Missing IP address")
         if not mac:
             raise ValueError("Missing MAC")
+        if not name:
+            raise ValueError("Missing name")
         if not username:
             raise ValueError("Missing username")
         if not password:
             raise ValueError("Missing password")
         self.addr = addr
         self.mac = mac
+        self.name = name
         self.username = username
         self.password = password
         self._log_request = False
         self._log_response = False
+
+    def __str__(self) -> str:
+        return "[EdiGreenSensor: {} {} {}]".format(self.name, self.addr, self.mac)
+
+    @staticmethod
+    def search(password):
+        # Create a UDP socket
+        sock = socket(AF_INET, SOCK_DGRAM)
+        sock.setsockopt(SOL_SOCKET, SO_BROADCAST, 1)
+        sock.settimeout(5)
+
+        # TODO(wdm) What are these magic bytes?
+        payload = bytes.fromhex('ff ff ff ff ff ff 00 02 ff fd 00 00 00 00')
+
+        try:
+            sent = sock.sendto(payload, ('255.255.255.255', 24929))
+            print('Searching for EdiMax sensor...')
+            data, _ = sock.recvfrom(4096)
+            mac = data[0:6].hex().upper()
+            # TODO(wdm) What is this? data[6:10] == b'\x01\x02\xfe\xfd'
+            # uid = mac + data[10:14]
+            search = json.loads(data[14:])
+            # print('Debug', search)
+            sensor = EdiGreenSensor(search.get('search.ip'), mac, search.get(
+                'search.name'), 'admin', password)
+            if sensor:
+                print('Found: ', sensor)
+            return sensor
+        except Exception as err:
+            print(err)
+        finally:
+            sock.close()
 
     def send_cmd(self, cmd):
         """Send command to Edimax and return its response."""
@@ -167,15 +203,20 @@ def _rotate_json(response):
 
 def test():
     """Example invocations."""
-    [addr, mac, username, password] = os.environ.get(
-        'EDIMAX_CONFIG', ':::').split(':')
-    sensor = EdiGreenSensor(addr, mac, username, password)
+    password = os.environ.get('EDIMAX_PASSWORD')
+    if not password:
+        print('Please set environemt variable EDIMAX_PASSWORD')
+        exit(1)
 
+    sensor = EdiGreenSensor.search(password)
+    if not sensor:
+        print('Failed to find a EdiMax sensor')
+        exit(1)
     print(sensor.get_readings())
 
     sensor._log_response = True
     sensor._log_request = True
-    sensor.get_all()
+    # sensor.get_all()
     sensor.set_led(1)
     sensor.set_led(0)
 
