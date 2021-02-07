@@ -22,19 +22,20 @@ class EdiGreenSensor:
         self.mac = mac
         self.username = username
         self.password = password
-        self._log_cmd = False
+        self._log_request = False
         self._log_result = False
 
     def send_cmd(self, cmd):
         """Send command to Edimax and return its response."""
-        if self._log_cmd:
-            print('debug: cmd=', json.dumps(cmd, indent=2))
         url = "http://{}:5678/edilife.cgi".format(self.addr)
         data = {
             "customer.name": "EDIMAX",
             "mac": self.mac,
             "cmd": cmd,
         }
+        if self._log_request:
+            print('debug: url={} data={}'.format(url, data))
+
         response = requests.post(url, data=json.dumps(data),
                                  auth=HTTPDigestAuth(self.username, self.password))
         msg = _rotate_json(response.content)
@@ -64,10 +65,61 @@ class EdiGreenSensor:
         return self.send_cmd([{"id": "get"}, {
             "basic": {
                 "fwversion": None,
-                # Always returns null. TODO(wdm) Is this field name correct?
-                "upgrade.status": None,
+                "mac": None,
+                "model": None,
+                "name.maxlen": None,
+                "name": None,
                 "owner.token": None,
-                "name": None
+                "produce.country.code": None,
+                "protocolversion": None,
+                "uploaddata.enable": None,
+
+                "cloud.ddns.domain": None,
+                "cloud.ddns.port": None,
+                "cloud.push.domain": None,
+                "cloud.push.port": None,
+                "cloud.ota.domain": None,
+                "cloud.ota.port": None,
+                "cloud.upload.domain": None,
+                "cloud.upload.port": None,
+                "cloud.upload.cert": None,
+                # TODO(wdm) Any other fields?
+
+                # These fields return null:
+                "cloud.push.cert": None,
+                "cloud.ota.cert": None,
+                "cloud.upload.cert": None,
+                "cgiversion": None,
+                "model.id": None,
+                "upgrade.status": None,
+            },
+            "network": {
+                "http.port": None,
+                "ip.type": None,
+                "ip.dhcp.ip": None,
+                "ip.static.ip": None,
+                "ip.static.netmask": None,
+                "ip.static.gateway": None,
+                "ip.static.dns1": None,
+                "wifi.check": None,
+                "wifi.mode": None,
+
+                # This field return values:
+                "wifi.ssid": None,
+                "wifi.auth": None,
+                "wifi.encryption": None,
+                "wifi.wpakey": None,
+
+                "wifi.bssid": None,
+                "wifi.channel": None,
+
+                "wifi.wepkeyIndex": None,
+                "wifi.wepkeyformat": None,
+                "wifi.wepkeylength": None,
+                "wifi.wepkey1": None,
+                "wifi.wepkey2": None,
+                "wifi.wepkey3": None,
+                "wifi.wepkey4": None,
             },
             "status": {
                 "systemtime": None,
@@ -96,7 +148,6 @@ class EdiGreenSensor:
             }
         }])
 
-
 # Utility functions:
 
 
@@ -123,6 +174,7 @@ def test():
     print(sensor.get_readings())
 
     sensor._log_result = True
+    sensor._log_request = True
     sensor.get_all()
     sensor.set_led(1)
     sensor.set_led(0)
