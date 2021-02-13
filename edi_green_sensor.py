@@ -7,6 +7,10 @@ import requests
 from requests.auth import HTTPDigestAuth
 
 
+class RequestFailed(Exception):
+    """Generic exception for failed requests to server."""
+
+
 class EdiGreenSensor:
     """Represents an Edimax EdiGreen Home Sensor."""
 
@@ -75,6 +79,11 @@ class EdiGreenSensor:
 
         response = requests.post(url, data=json.dumps(data),
                                  auth=HTTPDigestAuth(self.username, self.password))
+        if response.status_code == 401:
+            raise ValueError("Invalid password")
+        if response.status_code != 200:
+            raise RequestFailed(
+                'Request failed with code: {}'.format(response.status_code))
         msg = _rotate_json(response.content)
         # print('Debug: msg={}'.format(msg))
         data = json.loads(msg)
